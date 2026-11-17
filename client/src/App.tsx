@@ -12,6 +12,7 @@ import { ActiveNet } from './pages/ActiveNet';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { Dashboard } from './pages/Dashboard';
 import { LoginPage } from './pages/LoginPage';
+import { NetMapPage } from './pages/NetMapPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { SetupPage } from './pages/SetupPage';
 import { StationsPage } from './pages/StationsPage';
@@ -49,6 +50,14 @@ function App() {
                             element={(
                                 <ProtectedRoute>
                                     <ActiveNet />
+                                </ProtectedRoute>
+                            )}
+                        />
+                        <Route
+                            path='/nets/:id/map'
+                            element={(
+                                <ProtectedRoute>
+                                    <NetMapPage />
                                 </ProtectedRoute>
                             )}
                         />

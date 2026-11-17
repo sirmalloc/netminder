@@ -5,6 +5,8 @@ import {
 import {
     FaCar,
     FaDownload,
+    FaExternalLinkAlt,
+    FaMapMarkedAlt,
     FaPause,
     FaPlay,
     FaStop,
@@ -36,6 +38,7 @@ import {
 import { CallsignInput } from '../components/CallsignInput';
 import { CheckinRow } from '../components/CheckinRow';
 import { EditableText } from '../components/EditableName';
+import { NetMapView } from '../components/NetMapView';
 import { PageHeader } from '../components/PageHeader';
 import { StationHistoryPanel } from '../components/StationHistoryPanel';
 import { StickyOnScroll } from '../components/StickyOnScroll';
@@ -45,6 +48,16 @@ import {
     getDurationMinutes
 } from '../utils/duration';
 import { resolveErrorMessage } from '../utils/errors';
+
+const MAP_OPEN_STORAGE_KEY = 'netminder.map.open';
+
+function readMapOpenPreference(): boolean {
+    try {
+        return localStorage.getItem(MAP_OPEN_STORAGE_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
 
 function getLiveClockParts(date: Date): { hours: string; minutes: string; period: string } {
     const localeTime = date.toLocaleTimeString('en-US', {
@@ -78,8 +91,24 @@ export function ActiveNet() {
     >(new Map());
     const [selectedCheckinId, setSelectedCheckinId] = useState<number | null>(null);
 
+    const [mapOpen, setMapOpen] = useState<boolean>(readMapOpenPreference);
+
     const [currentTime, setCurrentTime] = useState<Date>(() => new Date());
     const [showColon, setShowColon] = useState(true);
+
+    function toggleMap() {
+        const next = !mapOpen;
+        setMapOpen(next);
+        try {
+            localStorage.setItem(MAP_OPEN_STORAGE_KEY, next ? '1' : '0');
+        } catch {
+            // Preference is optional; ignore storage failures
+        }
+    }
+
+    function handlePopOutMap() {
+        window.open(`/nets/${id}/map`, `netminder-map-${id}`, 'popup,width=1100,height=800');
+    }
 
     // Warn when per-user QRZ lookups are unavailable; a failed fetch simply shows no notice
     useEffect(() => {
@@ -833,14 +862,42 @@ export function ActiveNet() {
                         {checkins.length}
                         )
                     </h2>
-                    <button
-                        onClick={handleExportCSV}
-                        className='flex items-center gap-2 rounded-lg border border-slate-700/70 bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-2 text-sm text-slate-300 shadow-md shadow-black/20 transition-all duration-200 hover:border-slate-600 hover:from-slate-700 hover:to-slate-800'
-                    >
-                        <FaDownload />
-                        Export CSV
-                    </button>
+                    <div className='flex flex-wrap items-center gap-3'>
+                        <button
+                            onClick={toggleMap}
+                            aria-pressed={mapOpen}
+                            className={`flex items-center gap-2 rounded-lg border bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-2 text-sm shadow-md shadow-black/20 transition-all duration-200 hover:from-slate-700 hover:to-slate-800 ${mapOpen ? 'border-indigo-500/70 text-indigo-200' : 'border-slate-700/70 text-slate-300 hover:border-slate-600'}`}
+                        >
+                            <FaMapMarkedAlt />
+                            Map
+                        </button>
+                        <button
+                            onClick={handleExportCSV}
+                            className='flex items-center gap-2 rounded-lg border border-slate-700/70 bg-gradient-to-b from-slate-800 to-slate-900 px-4 py-2 text-sm text-slate-300 shadow-md shadow-black/20 transition-all duration-200 hover:border-slate-600 hover:from-slate-700 hover:to-slate-800'
+                        >
+                            <FaDownload />
+                            Export CSV
+                        </button>
+                    </div>
                 </div>
+
+                {mapOpen && (
+                    <div className='mb-4 overflow-hidden rounded-xl border border-slate-700/50 bg-slate-900/50 shadow-lg shadow-black/20'>
+                        <div className='flex items-center justify-between border-b border-slate-700/50 px-4 py-2'>
+                            <h3 className='text-sm font-semibold text-slate-200'>Check-in map</h3>
+                            <button
+                                onClick={handlePopOutMap}
+                                className='flex items-center gap-2 rounded-lg border border-slate-700/70 px-3 py-1 text-xs text-slate-300 transition-colors hover:border-slate-600 hover:bg-slate-800'
+                            >
+                                <FaExternalLinkAlt />
+                                Pop out
+                            </button>
+                        </div>
+                        <div className='h-[380px]'>
+                            <NetMapView checkins={checkins} />
+                        </div>
+                    </div>
+                )}
 
                 {/* Check-ins table */}
                 <div className='overflow-hidden rounded-xl border border-slate-700/50 bg-gradient-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-sm shadow-lg shadow-black/20'>

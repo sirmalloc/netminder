@@ -67,7 +67,7 @@ new Elysia()
         headers['X-Content-Type-Options']  = 'nosniff';
         headers['X-Frame-Options']         = 'DENY';
         headers['Referrer-Policy']         = 'no-referrer';
-        headers['Content-Security-Policy'] = 'default-src \'self\'; img-src \'self\' data:; style-src \'self\' \'unsafe-inline\' https:; script-src \'self\' https:; font-src \'self\' data: https:; frame-ancestors \'none\'; base-uri \'self\'';
+        headers['Content-Security-Policy'] = 'default-src \'self\'; img-src \'self\' data: https://tile.openstreetmap.org https://mesonet.agron.iastate.edu; style-src \'self\' \'unsafe-inline\' https:; script-src \'self\' https:; font-src \'self\' data: https:; frame-ancestors \'none\'; base-uri \'self\'';
         set.headers = headers;
     })
 

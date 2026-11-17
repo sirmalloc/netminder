@@ -8,6 +8,7 @@ NetMinder helps amateur radio net control operators manage nets, station check-i
 - Track station check-ins, callsigns, names, locations, and comments
 - Optionally track fixed, mobile, and portable check-ins; admins can turn this off under Settings (Enable mobility tracking), which hides mobility controls while keeping stored data
 - View station history (split into "Your nets" and "All visible nets") and export net records as CSV
+- Map a net's check-ins from QRZ coordinates (or grid square center), with an optional NEXRAD radar overlay and a pop-out window
 - Look up callsigns through optional QRZ integration
 - Manage operator accounts and administrator access
 - Run locally or in Docker with persistent SQLite storage
