@@ -6,8 +6,10 @@ import {
 
 import { deleteStationRecord } from '@netminder/dal';
 
+import type { AuthUser } from '../auth/middleware';
 import {
     errorResponse,
+    unauthorizedResponse,
     type ErrorResponse
 } from '../common/errors';
 
@@ -25,12 +27,14 @@ export const deleteContract = {
     }, { description: 'Route parameters identifying the station to remove' }),
     detail: {
         summary: 'Delete station',
-        description: 'Removes a station record from the NetMinder directory.',
+        description: 'Removes a station record from the NetMinder directory. Restricted to administrators.',
         tags: ['Stations'] as string[]
     },
     response: {
         204: t.Null(),
         400: errorResponse,
+        401: errorResponse,
+        403: errorResponse,
         404: errorResponse,
         500: errorResponse
     }
@@ -41,12 +45,29 @@ export type DeleteResponse = Static<typeof deleteContract.response[204]>;
 interface DeleteContext {
     params: DeleteParams;
     set: Context['set'];
+    user?: AuthUser | null;
 }
 
 export const deleteHandler = ({
     params,
-    set
+    set,
+    user
 }: DeleteContext): null | ErrorResponse => {
+    if (!user) {
+        set.status = 401;
+        return unauthorizedResponse();
+    }
+
+    if (!user.isAdmin) {
+        set.status = 403;
+        return {
+            error: {
+                code: 'FORBIDDEN',
+                message: 'Only administrators can delete stations'
+            }
+        };
+    }
+
     const decoded = decodeCallsignParam(params.callsign);
     if (!decoded) {
         set.status = 400;

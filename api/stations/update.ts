@@ -41,12 +41,13 @@ export const updateContract = {
     }, { description: 'Fields that can be modified on the station record' }),
     detail: {
         summary: 'Update station',
-        description: 'Updates station metadata and optionally renames the station to a new callsign.',
+        description: 'Updates station metadata and optionally renames the station to a new callsign. Changing the callsign is restricted to administrators.',
         tags: ['Stations'] as string[]
     },
     response: {
         200: t.Object({ station: stationDetailSchema }, { description: 'Station detail after applying updates' }),
         400: errorResponse,
+        403: errorResponse,
         404: errorResponse,
         409: errorResponse,
         500: errorResponse
@@ -97,6 +98,16 @@ export const updateHandler = async ({
             error: {
                 code: 'INVALID_REQUEST',
                 message: 'Request body must contain at least one field to update'
+            }
+        };
+    }
+
+    if (body.new_callsign !== undefined && !user?.isAdmin) {
+        set.status = 403;
+        return {
+            error: {
+                code: 'FORBIDDEN',
+                message: 'Only administrators can change a station\'s callsign'
             }
         };
     }

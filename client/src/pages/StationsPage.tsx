@@ -19,9 +19,12 @@ import { EditableName } from '../components/EditableName';
 import { Modal } from '../components/Modal';
 import { PageHeader } from '../components/PageHeader';
 import { StationHistoryPanel } from '../components/StationHistoryPanel';
+import { useAuth } from '../contexts/AuthContext';
 import { resolveErrorMessage } from '../utils/errors';
 
 export function StationsPage() {
+    const { user } = useAuth();
+    const isAdmin = Boolean(user?.is_admin);
     const [stations, setStations] = useState<StationListItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -288,11 +291,15 @@ export function StationsPage() {
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setStationToDelete(station);
+                                                            if (isAdmin)
+                                                                setStationToDelete(station);
                                                         }}
-                                                        className='rounded p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/30 transition'
-                                                        title='Delete station'
-                                                        aria-label='Delete station'
+                                                        className={isAdmin
+                                                            ? 'rounded p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/30 transition'
+                                                            : 'rounded p-1.5 text-slate-600 opacity-50 cursor-not-allowed'}
+                                                        title={isAdmin ? 'Delete station' : 'Only administrators can delete stations'}
+                                                        aria-label={isAdmin ? 'Delete station' : 'Delete station (only administrators can delete stations)'}
+                                                        aria-disabled={!isAdmin}
                                                     >
                                                         <FaTrash size={14} />
                                                     </button>

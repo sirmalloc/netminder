@@ -3,6 +3,7 @@ import {
     type MobilityType
 } from '../db';
 import { NET_VISIBLE_SQL } from '../nets/access';
+import { normalizeCallsign } from '../stations/get';
 import { upsertStationWithQRZ } from '../stations/mutations';
 
 import { listCheckinsByNet } from './list';
@@ -212,6 +213,65 @@ export function updateCheckinRecord(
     }
 
     return fetchCheckinRecord(id, existing.net_id);
+}
+
+export type ReassignCheckinResult =
+    | { status: 'not_found' }
+    | { status: 'conflict'; callsign: string }
+    | { status: 'success'; checkin: CheckinRecord };
+
+export async function reassignCheckinCallsign(
+    checkinId: number,
+    newCallsign: string,
+    userId: number | null
+): Promise<ReassignCheckinResult> {
+    const existing = getCheckinById(checkinId);
+    if (!existing) {
+        return { status: 'not_found' };
+    }
+
+    const normalized = normalizeCallsign(newCallsign);
+    if (normalized === existing.callsign.toUpperCase()) {
+        return { status: 'success', checkin: fetchCheckinRecord(checkinId, existing.net_id) };
+    }
+
+    const duplicate = db.prepare<{ id: number }>(`
+        SELECT c.id
+        FROM checkins c
+        JOIN stations s ON c.station_id = s.id
+        WHERE s.callsign = ? AND c.net_id = ? AND c.id != ?
+    `).get(normalized, existing.net_id, checkinId);
+    if (duplicate) {
+        return { status: 'conflict', callsign: normalized };
+    }
+
+    const station = await upsertStationWithQRZ(normalized, userId);
+
+    const conflict = db.transaction(() => {
+        const raced = db.prepare<{ id: number }>(
+            'SELECT id FROM checkins WHERE station_id = ? AND net_id = ? AND id != ?'
+        ).get(station.id, existing.net_id, checkinId);
+        if (raced) {
+            return true;
+        }
+
+        db.prepare('UPDATE checkins SET station_id = ?, callsign = ?, display_name = ? WHERE id = ?')
+            .run(station.id, station.callsign, getDisplayNameWithSuffixFromSource(station), checkinId);
+
+        const remaining = db.prepare<{ count: number }>(
+            'SELECT COUNT(*) as count FROM checkins WHERE station_id = ?'
+        ).get(existing.station_id);
+        if ((remaining?.count ?? 0) === 0) {
+            db.prepare('DELETE FROM stations WHERE id = ?').run(existing.station_id);
+        }
+        return false;
+    });
+
+    if (conflict) {
+        return { status: 'conflict', callsign: normalized };
+    }
+
+    return { status: 'success', checkin: fetchCheckinRecord(checkinId, existing.net_id) };
 }
 
 export function deleteCheckinRecord(id: number): boolean {

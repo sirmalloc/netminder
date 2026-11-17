@@ -7,6 +7,7 @@ import {
 import {
     findVisibleNetForCheckin,
     getMobilityEnabled,
+    reassignCheckinCallsign,
     updateCheckinRecord
 } from '@netminder/dal';
 
@@ -17,6 +18,7 @@ import {
     type ErrorResponse
 } from '../common/errors';
 import { parsePositiveInt } from '../common/validation';
+import { normalizeCallsignValue } from '../stations/utils';
 
 import {
     checkinSchema,
@@ -33,6 +35,10 @@ export const updateContract = {
         })
     }, { description: 'Route parameters identifying the checkin being modified' }),
     body: t.Object({
+        callsign: t.Optional(t.String({
+            description: 'Corrects this check-in\'s callsign by moving it to that station; other nets are unaffected',
+            examples: ['K1ABC']
+        })),
         mobility: t.Optional(mobilitySchema),
         staying: t.Optional(t.Boolean({ description: 'Update whether the station is staying for the remainder of the net' })),
         called_back: t.Optional(t.Boolean({ description: 'Flag indicating if net control has completed a callback with the station' })),
@@ -41,13 +47,14 @@ export const updateContract = {
     }, { description: 'Fields that can be adjusted on an existing checkin' }),
     detail: {
         summary: 'Update checkin',
-        description: 'Updates checkin status or operator notes for a station.',
+        description: 'Updates checkin status or operator notes for a station, or corrects its callsign by moving it to another station.',
         tags: ['Checkins'] as string[]
     },
     response: {
         200: t.Object({ checkin: checkinSchema }, { description: 'Updated checkin returned after changes are applied' }),
         400: errorResponse,
-        404: errorResponse
+        404: errorResponse,
+        409: errorResponse
     }
 } as const;
 
@@ -66,7 +73,7 @@ function parseId(params: UpdateParams): number | null {
     return parsePositiveInt(params.id);
 }
 
-export const updateHandler = ({ params, body, user, set }: UpdateContext): UpdateResponse | ErrorResponse => {
+export const updateHandler = async ({ params, body, user, set }: UpdateContext): Promise<UpdateResponse | ErrorResponse> => {
     if (!user) {
         set.status = 401;
         return unauthorizedResponse();
@@ -93,7 +100,41 @@ export const updateHandler = ({ params, body, user, set }: UpdateContext): Updat
         };
     }
 
+    const newCallsign = body.callsign === undefined ? undefined : normalizeCallsignValue(body.callsign);
+    if (newCallsign !== undefined && newCallsign.length === 0) {
+        set.status = 400;
+        return {
+            error: {
+                code: 'INVALID_REQUEST',
+                message: 'Callsign cannot be empty'
+            }
+        };
+    }
+
     try {
+        if (newCallsign !== undefined) {
+            const result = await reassignCheckinCallsign(id, newCallsign, user.userId);
+            if (result.status === 'not_found') {
+                set.status = 404;
+                return {
+                    error: {
+                        code: 'CHECKIN_NOT_FOUND',
+                        message: 'Checkin not found'
+                    }
+                };
+            }
+
+            if (result.status === 'conflict') {
+                set.status = 409;
+                return {
+                    error: {
+                        code: 'DUPLICATE_CHECKIN',
+                        message: `${result.callsign} is already checked into this net`
+                    }
+                };
+            }
+        }
+
         const mobilityValue = body.mobility && getMobilityEnabled() ? normalizeMobility(body.mobility) : undefined;
 
         const updated = updateCheckinRecord(id, {

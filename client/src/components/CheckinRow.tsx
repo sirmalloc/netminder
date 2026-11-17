@@ -108,17 +108,12 @@ export function CheckinRow({
         const previousCallsign = checkin.callsign;
 
         try {
-            const updatedStation = await updateStation(previousCallsign, { new_callsign: normalizedValue });
-            onUpdate({
-                ...checkin,
-                callsign: updatedStation.callsign,
-                display_name: updatedStation.display_name ?? checkin.display_name ?? null,
-                location_display: updatedStation.location_display ?? checkin.location_display ?? null
-            });
-            onCallsignRenamed?.(previousCallsign, updatedStation.callsign);
+            const updated = await updateCheckinApi(checkin.id, { callsign: normalizedValue });
+            onUpdate(updated);
+            onCallsignRenamed?.(previousCallsign, updated.callsign);
         } catch (error) {
-            console.error('Error renaming station callsign:', error);
-            throw error instanceof Error ? error : new Error('Failed to rename callsign');
+            console.error('Error correcting check-in callsign:', error);
+            throw error instanceof Error ? error : new Error('Failed to correct callsign');
         }
     };
 

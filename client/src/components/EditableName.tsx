@@ -193,7 +193,7 @@ export function EditableText({
                 <button
                     type='button'
                     onClick={beginEdit}
-                    className={`flex w-full items-center gap-2 text-left transition ${textClassName} ${disabled ? 'cursor-not-allowed opacity-60' : ''}`}
+                    className={`flex w-full items-center gap-2 text-left transition ${textClassName} ${disabled ? 'cursor-default' : ''}`}
                     disabled={disabled}
                 >
                     {renderContent()}

@@ -18,6 +18,7 @@ import {
     updateStation
 } from '../api';
 import { useAppConfig } from '../contexts/AppConfigContext';
+import { useAuth } from '../contexts/AuthContext';
 import { parseDisplayName } from '../utils/displayName';
 import { resolveErrorMessage } from '../utils/errors';
 
@@ -40,6 +41,8 @@ export function StationHistoryPanel({
 }: StationHistoryPanelProps) {
     const navigate = useNavigate();
     const { mobilityEnabled } = useAppConfig();
+    const { user } = useAuth();
+    const isAdmin = Boolean(user?.is_admin);
     const [stats, setStats] = useState<StationStats | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -236,7 +239,8 @@ export function StationHistoryPanel({
                                     onSave={handleCallsignSave}
                                     placeholder='Edit callsign'
                                     className='w-full'
-                                    textClassName='flex w-full items-center font-mono text-lg uppercase tracking-wide text-sky-400 hover:text-sky-200'
+                                    disabled={!isAdmin}
+                                    textClassName={`flex w-full items-center font-mono text-lg uppercase tracking-wide text-sky-400${isAdmin ? ' hover:text-sky-200' : ''}`}
                                     transformDraft={draft => draft.toUpperCase()}
                                     formatSubmittedValue={draft => draft.toUpperCase()}
                                     inputProps={{
