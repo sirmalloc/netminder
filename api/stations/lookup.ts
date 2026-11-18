@@ -27,7 +27,7 @@ export const lookupContract = {
     }, { description: 'Route parameters identifying the station lookup target' }),
     detail: {
         summary: 'Lookup station details',
-        description: 'Performs a station lookup, combining stored data with QRZ information when available.',
+        description: 'Performs a station lookup, combining stored data with QRZ information when available. Freshly fetched QRZ data is saved to existing stations; lookups never create stations.',
         tags: ['Stations'] as string[]
     },
     response: {

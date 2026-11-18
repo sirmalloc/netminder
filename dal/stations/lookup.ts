@@ -15,6 +15,7 @@ import {
     findStationByCallsign,
     normalizeCallsign
 } from './get';
+import { createOrUpdateStationRecord } from './mutations';
 
 export type FieldSource = 'manual' | 'qrz' | 'none';
 
@@ -45,7 +46,7 @@ export interface StationLookupDetails {
 
 export async function getStationLookupDetails(callsign: string, userId: number | null): Promise<StationLookupDetails> {
     const normalizedCallsign = normalizeCallsign(callsign);
-    const station = findStationByCallsign(normalizedCallsign);
+    let station = findStationByCallsign(normalizedCallsign);
 
     const qrzEnabled = isQRZConfigured(userId);
 
@@ -81,6 +82,17 @@ export async function getStationLookupDetails(callsign: string, userId: number |
             fetchedNow = true;
             qrzDataRaw = JSON.stringify(lookupResult);
             qrzLastFetchedAt = new Date().toISOString();
+
+            if (station) {
+                try {
+                    station = createOrUpdateStationRecord(normalizedCallsign, {
+                        qrz_data: qrzDataRaw,
+                        qrz_last_fetched_at: qrzLastFetchedAt
+                    });
+                } catch (error) {
+                    console.error('Failed to save QRZ data from lookup', error);
+                }
+            }
 
             qrzParsed = lookupResult as ParsedQrzData;
 

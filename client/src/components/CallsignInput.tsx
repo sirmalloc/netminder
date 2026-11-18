@@ -71,6 +71,12 @@ const toFieldState = (
     };
 };
 
+const needsLookup = (station: StationListItem): boolean => {
+    const hasName = Boolean((station.display_name ?? '').trim() || (station.preferred_name ?? '').trim());
+    const hasLocation = Boolean((station.location_display ?? '').trim() || (station.location ?? '').trim());
+    return !hasName || !hasLocation;
+};
+
 export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputProps) {
     const [value, setValue] = useState('');
     const [preferredNameField, setPreferredNameField] = useState<FieldState>(createEmptyFieldState);
@@ -91,6 +97,8 @@ export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputPr
     const selectionInProgressRef = useRef(false);
     const lastLookupCallsignRef = useRef<string | null>(null);
     const appliedStationCallsignRef = useRef<string | null>(null);
+    const currentCallsignRef = useRef('');
+    currentCallsignRef.current = value.trim().toUpperCase();
 
     useEffect(() => {
         if (autoFocus) {
@@ -275,6 +283,9 @@ export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputPr
         try {
             setIsLookupInFlight(true);
             const lookup = await fetchStationLookup(callsign);
+            if (currentCallsignRef.current !== callsign.trim().toUpperCase()) {
+                return;
+            }
             applyLookupResult(lookup);
         } catch (error) {
             console.error('Error performing callsign lookup:', error);
@@ -336,6 +347,9 @@ export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputPr
             const selected = suggestion.callsign;
             selectionInProgressRef.current = true;
             applyStationDetails(suggestion);
+            if (needsLookup(suggestion)) {
+                void performLookup(selected.toUpperCase());
+            }
             suppressSearchRef.current = true;
             setValue(selected.toUpperCase());
             setSuggestions([]);
@@ -422,6 +436,9 @@ export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputPr
                                 selectionInProgressRef.current = true;
                                 setValue(station.callsign.toUpperCase());
                                 applyStationDetails(station);
+                                if (needsLookup(station)) {
+                                    void performLookup(station.callsign.toUpperCase());
+                                }
                                 setSuggestions([]);
                                 setShowDropdown(false);
                                 setSelectedIndex(-1);
@@ -540,6 +557,9 @@ export function CallsignInput({ onSubmit, disabled, autoFocus }: CallsignInputPr
                                 if (suggestionMatch) {
                                     applyStationDetails(suggestionMatch);
                                     lastLookupCallsignRef.current = trimmed;
+                                    if (needsLookup(suggestionMatch)) {
+                                        void performLookup(trimmed);
+                                    }
                                     return;
                                 }
 
